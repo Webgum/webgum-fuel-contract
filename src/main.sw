@@ -10,14 +10,13 @@ pub struct Project {
     projectId: u64,
     price: u64,
     ownerAddress: Identity,
-    // make dynamic or make json metatdata a fixed length of characters?
+    rating: f64,
+    // use IPFS CID here?
     metadata: str[50],
-
-    // use vector or map ? or should make buyers map in storage?
-    // buyers: StorageVec<Address> = StorageVec {},
 }
 
 storage {
+    buyers: StorageMap<Address, Vec<u64>> = StorageMap {},
     projectListings: StorageVec<Project> = StorageVec {},
     commissionPercent: f64 = 0.420;
     owner: Identity =  Identity::Address(ADDRESS_HERE);
@@ -28,13 +27,13 @@ abi WebGum {
     fn list_project(price: u64, metadata: str[50]) -> Project;
 
     #[storage(read, write)]
-    fn update_project(price: u64, metadata: str[50]) -> Project;
+    fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project;
 
     #[storage(read, write)]
-    fn buy_project();
+    fn buy_project(projectId: u64);
 
     #[storage(read, write)]
-    fn reviewProject();
+    fn reviewProject(projectId: u64, rating: f64);
 
     #[storage(read)]
     fn getProject(id: u64) -> Project;
@@ -57,6 +56,7 @@ impl WebGum for Contract {
             projectId: index,
             price: price,
             ownerAddress: sender,
+            rating: 0,
             metadata: metadata,
         };
 
@@ -68,8 +68,9 @@ impl WebGum for Contract {
     }
 
     #[storage(read, write)]
-    fn update_project(price: u64, metadata: str[50]) -> Project{
-
+    fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project{
+        let project = storage.projectListings.get(projectId).unwrap()
+        
     }
 
     #[storage(read, write)]
@@ -85,7 +86,7 @@ impl WebGum for Contract {
     }
 
     #[storage(read, write)]
-    fn reviewProject(){
+    fn reviewProject(projectId: u64, rating: f64){
 
     }
 
