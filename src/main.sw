@@ -12,7 +12,7 @@ pub struct Project {
     ownerAddress: Identity,
     rating: u64,
     // use IPFS CID here?
-    metadata: str[50],
+    metadata: str[5],
 }
 
 storage {
@@ -24,7 +24,7 @@ storage {
 
 abi WebGum {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[50]) -> Project;
+    fn list_project(price: u64, metadata: str[5]) -> Project;
 
     // #[storage(read, write)]
     // fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project;
@@ -35,8 +35,8 @@ abi WebGum {
     // #[storage(read, write)]
     // fn reviewProject(projectId: u64, rating: u64);
 
-    // #[storage(read)]
-    // fn getProject(id: u64) -> Project;
+    #[storage(read)]
+    fn get_project(projectId: u64) -> Project;
 
     // #[storage(read)]
     // fn hasBoughtProject(projectId: u64, wallet: Address) -> bool;
@@ -48,7 +48,7 @@ abi WebGum {
 
 impl WebGum for Contract {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[50]) -> Project{
+    fn list_project(price: u64, metadata: str[5]) -> Project{
         let index = storage.projectListings.len();
         let sender: Result<Identity, AuthError> = msg_sender();
         let rating: u64 = 0;
@@ -89,10 +89,11 @@ impl WebGum for Contract {
 
     // }
 
-    // #[storage(read)]
-    // fn getProject(id: u64) -> Project{
-
-    // }
+    #[storage(read)]
+    fn get_project(projectId: u64) -> Project{
+        let project = storage.projectListings.get(projectId).unwrap();
+        return project
+    }
 
     // #[storage(read)]
     // fn hasBoughtProject(projectId: u64, wallet: Address) -> bool{
