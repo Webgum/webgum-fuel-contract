@@ -10,97 +10,98 @@ pub struct Project {
     projectId: u64,
     price: u64,
     ownerAddress: Identity,
-    // make dynamic or make json metatdata a fixed length of characters?
-    metadata: str[50],
-
-    // use vector or map ? or should make buyers map in storage?
-    // buyers: StorageVec<Address> = StorageVec {},
+    rating: u64,
+    // use IPFS CID here?
+    metadata: str[5],
 }
 
 storage {
+    // buyers: StorageMap<Address, Vec<u64>> = StorageMap {},
     projectListings: StorageVec<Project> = StorageVec {},
-    commissionPercent: f64 = 0.420;
-    owner: Identity =  Identity::Address(ADDRESS_HERE);
+    // commissionPercent: u64 = 420,
+    // owner: Identity =  Identity::Address(ADDRESS_HERE);
 }
 
 abi WebGum {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[50]) -> Project;
+    fn list_project(price: u64, metadata: str[5]) -> Project;
 
-    #[storage(read, write)]
-    fn update_project(price: u64, metadata: str[50]) -> Project;
+    // #[storage(read, write)]
+    // fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project;
 
-    #[storage(read, write)]
-    fn buy_project();
+    // #[storage(read, write)]
+    // fn buy_project(projectId: u64);
 
-    #[storage(read, write)]
-    fn reviewProject();
-
-    #[storage(read)]
-    fn getProject(id: u64) -> Project;
+    // #[storage(read, write)]
+    // fn reviewProject(projectId: u64, rating: u64);
 
     #[storage(read)]
-    fn hasBoughtProject(projectId: u64, wallet: Address) -> bool;
+    fn get_project(projectId: u64) -> Project;
 
-    #[storage(read, write)]
-    fn update_owner(identity: Identity);
+    // #[storage(read)]
+    // fn hasBoughtProject(projectId: u64, wallet: Address) -> bool;
+
+    // #[storage(read, write)]
+    // fn update_owner(identity: Identity);
 
 }
 
 impl WebGum for Contract {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[50]) -> Project{
+    fn list_project(price: u64, metadata: str[5]) -> Project{
         let index = storage.projectListings.len();
         let sender: Result<Identity, AuthError> = msg_sender();
+        let rating: u64 = 0;
 
         let newProject =  Project {
             projectId: index,
             price: price,
-            ownerAddress: sender,
+            ownerAddress: sender.unwrap(),
+            rating: rating,
             metadata: metadata,
         };
 
-        projectListings.push(newProject);
-        assert(projectListings[index] == newProject);
+        storage.projectListings.push(newProject);
 
-        return projectListings[index];
-
+        return newProject
     }
 
-    #[storage(read, write)]
-    fn update_project(price: u64, metadata: str[50]) -> Project{
-
-    }
-
-    #[storage(read, write)]
-    fn buy_project(projectId: u64){
-        // make payable, require price == payment
+    // #[storage(read, write)]
+    // fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project{
+    //     let project = storage.projectListings.get(projectId).unwrap()
         
-        let sender: Result<Identity, AuthError> = msg_sender();
+    // }
 
-        let project = storage.projectListings.get(projectId).unwrap()
+    // #[storage(read, write)]
+    // fn buy_project(projectId: u64){
+    //     // make payable, require price == payment
+        
+    //     let sender: Result<Identity, AuthError> = msg_sender();
 
-        // add to buyer list
+    //     let project = storage.projectListings.get(projectId).unwrap()
 
-    }
+    //     // add to buyer list
 
-    #[storage(read, write)]
-    fn reviewProject(){
+    // }
 
-    }
+    // #[storage(read, write)]
+    // fn reviewProject(projectId: u64, rating: u64){
+
+    // }
 
     #[storage(read)]
-    fn getProject(id: u64) -> Project{
-
+    fn get_project(projectId: u64) -> Project{
+        let project = storage.projectListings.get(projectId).unwrap();
+        return project
     }
 
-    #[storage(read)]
-    fn hasBoughtProject(projectId: u64, wallet: Address) -> bool{
+    // #[storage(read)]
+    // fn hasBoughtProject(projectId: u64, wallet: Address) -> bool{
 
-    }
+    // }
 
-    #[storage(read, write)]
-     fn update_owner(identity: Identity) {
-        storage.owner = Option::Some(identity);
-    }
+    // #[storage(read, write)]
+    //  fn update_owner(identity: Identity) {
+    //     storage.owner = Option::Some(identity);
+    // }
 }

@@ -34,7 +34,14 @@ async fn get_contract_instance() -> (MyContract, ContractId) {
 
 #[tokio::test]
 async fn can_get_contract_id() {
-    let (_instance, _id) = get_contract_instance().await;
+    let (instance, _id) = get_contract_instance().await;
 
     // Now you have an instance of your contract you can use to test each function
+
+    let metadata: fuels::core::types::SizedAsciiString<5> = "abcde".try_into().expect("Should have succeeded");
+    let price: u64 = 1;
+    
+    let result1 = instance.list_project(price, metadata).call().await.unwrap();
+    let result2 = instance.get_project(0).call().await.unwrap();
+    assert!(result1.value == result2.value);
 }
