@@ -44,4 +44,10 @@ async fn can_get_contract_id() {
     let result1 = instance.list_project(price, metadata).call().await.unwrap();
     let result2 = instance.get_project(0).call().await.unwrap();
     assert!(result1.value == result2.value);
+
+    // buy project
+    let wallet_address = instance.buy_project(0).call().await.unwrap();
+    let has_project = instance.has_bought_project(0, wallet_address.value).call().await.unwrap();
+    assert!(has_project.value == true);
+    
 }
