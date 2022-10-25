@@ -1,10 +1,16 @@
 contract;
 
-use std::storage::StorageVec;
-use std::storage::StorageMap;
-use std::identity::Identity;
-use std::option::Option;
-use std::chain::auth::{AuthError, msg_sender};
+use std::{
+    storage::StorageVec,
+    storage::StorageMap,
+    identity::Identity,
+    constants::BASE_ASSET_ID,
+    logging::log,
+    option::Option,
+    chain::auth::{AuthError, msg_sender},
+    context::{call_frames::msg_asset_id, msg_amount, this_balance},
+    token::transfer,
+};
 
 pub struct Project {
     projectId: u64,
@@ -12,6 +18,11 @@ pub struct Project {
     ownerAddress: Identity,
     // use IPFS CID here?
     metadata: str[5],
+}
+
+pub enum InvalidError {
+    IncorrectAssetId: (),
+    NotEnoughTokens: (),
 }
 
 storage {
@@ -73,10 +84,19 @@ impl WebGum for Contract {
 
     #[storage(read, write)]
     fn buy_project(projectId: u64) -> Identity{
-        // make payable, require price == payment
+        let asset_id = msg_asset_id();
+        let amount = msg_amount();
+
+        let project: Project = storage.projectListings.get(projectId).unwrap();
+
+        // TODO: add errors
+        // require payment
+        require(asset_id == BASE_ASSET_ID, InvalidError::IncorrectAssetId);
+        require(amount >= project.price, InvalidError::NotEnoughTokens);
         
         let sender: Result<Identity, AuthError> = msg_sender();
 
+        // check if buyer already exists
         let mut existing: Vec<u64> = storage.buyers.get(sender.unwrap());
 
         // add msg sender to buyer list
@@ -88,6 +108,10 @@ impl WebGum for Contract {
             existing.push(projectId);
             storage.buyers.insert(sender.unwrap(), existing);
         }
+
+        // TO DO: add commission
+        //send the payout
+        transfer(amount, asset_id, project.ownerAddress);
 
         return sender.unwrap();
 
@@ -101,6 +125,7 @@ impl WebGum for Contract {
     #[storage(read)]
     fn get_project(projectId: u64) -> Project{
         let project = storage.projectListings.get(projectId).unwrap();
+        log(project);
         return project
     }
 
@@ -110,19 +135,19 @@ impl WebGum for Contract {
 
         let existing: Vec<u64> = storage.buyers.get(sender.unwrap());
 
-    let mut i = 0;
-    let mut hasBought = false;
-    while i < existing.len() {
-        let project = existing.get(i).unwrap();
-        if project == projectId {
-            hasBought = true;
+        let mut i = 0;
+        let mut hasBought = false;
+        while i < existing.len() {
+            let project = existing.get(i).unwrap();
+            if project == projectId {
+                hasBought = true;
+            }
+            i += 1;
         }
-        i += 1;
+
+        return hasBought;
+
     }
-
-    return hasBought;
-
-}
 
     // #[storage(read, write)]
     //  fn update_owner(identity: Identity) {
