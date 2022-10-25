@@ -5,7 +5,6 @@ use std::{
     storage::StorageMap,
     identity::Identity,
     constants::BASE_ASSET_ID,
-    logging::log,
     option::Option,
     chain::auth::{AuthError, msg_sender},
     context::{call_frames::msg_asset_id, msg_amount, this_balance},
@@ -51,6 +50,9 @@ abi WebGum {
     fn get_project(projectId: u64) -> Project;
 
     #[storage(read)]
+    fn get_buyer_list_length(buyer: Identity) -> u64;
+
+    #[storage(read)]
     fn has_bought_project(projectId: u64, wallet: Identity) -> bool;
 
     // #[storage(read, write)]
@@ -83,20 +85,19 @@ impl WebGum for Contract {
     // }
 
     #[storage(read, write)]
-    fn buy_project(projectId: u64) -> Identity{
+    fn buy_project(projectId: u64) -> Identity {
         let asset_id = msg_asset_id();
         let amount = msg_amount();
 
         let project: Project = storage.projectListings.get(projectId).unwrap();
 
-        // TODO: add errors
         // require payment
         require(asset_id == BASE_ASSET_ID, InvalidError::IncorrectAssetId);
         require(amount >= project.price, InvalidError::NotEnoughTokens);
         
         let sender: Result<Identity, AuthError> = msg_sender();
 
-        // check if buyer already exists
+        // // check if buyer already exists
         let mut existing: Vec<u64> = storage.buyers.get(sender.unwrap());
 
         // add msg sender to buyer list
@@ -109,12 +110,14 @@ impl WebGum for Contract {
             storage.buyers.insert(sender.unwrap(), existing);
         }
 
-        // TO DO: add commission
-        //send the payout
-        transfer(amount, asset_id, project.ownerAddress);
+        // // TO DO: add commission
+        // //send the payout
+        // this isn't working 
+        // transfer(amount, asset_id, project.ownerAddress);
 
-        return sender.unwrap();
+        let id: Identity = sender.unwrap();
 
+        return id;
     }
 
     // #[storage(read, write)]
@@ -125,8 +128,14 @@ impl WebGum for Contract {
     #[storage(read)]
     fn get_project(projectId: u64) -> Project{
         let project = storage.projectListings.get(projectId).unwrap();
-        log(project);
         return project
+    }
+
+    #[storage(read)]
+    fn get_buyer_list_length(buyer: Identity) -> u64{
+        let sender: Result<Identity, AuthError> = msg_sender();
+        let buyer_list: Vec<u64> = storage.buyers.get(sender.unwrap());
+        return buyer_list.len()
     }
 
     #[storage(read)]
@@ -136,16 +145,15 @@ impl WebGum for Contract {
         let existing: Vec<u64> = storage.buyers.get(sender.unwrap());
 
         let mut i = 0;
-        let mut hasBought = false;
         while i < existing.len() {
             let project = existing.get(i).unwrap();
             if project == projectId {
-                hasBought = true;
+                return true;
             }
             i += 1;
         }
 
-        return hasBought;
+        return false;
 
     }
 
