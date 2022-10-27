@@ -53,6 +53,9 @@ abi WebGum {
     fn get_buyer_list_length(buyer: Identity) -> u64;
 
     #[storage(read)]
+    fn get_bought_project(buyer: Identity, index: u64) -> Project;
+
+    #[storage(read)]
     fn has_bought_project(projectId: u64, wallet: Identity) -> bool;
 
     // #[storage(read, write)]
@@ -127,22 +130,23 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_project(projectId: u64) -> Project{
-        let project = storage.projectListings.get(projectId).unwrap();
-        return project
+        storage.projectListings.get(projectId).unwrap()
     }
 
     #[storage(read)]
     fn get_buyer_list_length(buyer: Identity) -> u64{
-        let sender: Result<Identity, AuthError> = msg_sender();
-        let buyer_list: Vec<u64> = storage.buyers.get(sender.unwrap());
-        return buyer_list.len()
+        storage.buyers.get(buyer).len()
+    }
+
+    #[storage(read)]
+    fn get_bought_project(buyer: Identity, index: u64) -> Project{
+        let projectId = storage.buyers.get(buyer).get(index).unwrap();
+        storage.projectListings.get(projectId).unwrap()
     }
 
     #[storage(read)]
     fn has_bought_project(projectId: u64, wallet: Identity) -> bool{
-         let sender: Result<Identity, AuthError> = msg_sender();
-
-        let existing: Vec<u64> = storage.buyers.get(sender.unwrap());
+        let existing: Vec<u64> = storage.buyers.get(wallet);
 
         let mut i = 0;
         while i < existing.len() {
