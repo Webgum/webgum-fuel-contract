@@ -28,6 +28,7 @@ storage {
     // map of project ids to a vector of ratings
     // ratings: StorageMap<u64, Vec<u64>> = StorageMap {},
     buyers: StorageMap<Identity, Vec<u64>> = StorageMap {},
+    creators: StorageMap<Identity, Vec<u64>> = StorageMap {},
     projectListings: StorageVec<Project> = StorageVec {},
     // commissionPercent: u64 = 420,
     // owner: Identity =  Identity::Address(ADDRESS_HERE);
@@ -48,6 +49,12 @@ abi WebGum {
 
     #[storage(read)]
     fn get_project(projectId: u64) -> Project;
+
+    #[storage(read)]
+    fn get_creator_list_length(creator: Identity) -> u64;
+
+    #[storage(read)]
+    fn get_created_project(creator: Identity, index: u64) -> Project;
 
     #[storage(read)]
     fn get_buyer_list_length(buyer: Identity) -> u64;
@@ -77,6 +84,21 @@ impl WebGum for Contract {
         };
 
         storage.projectListings.push(newProject);
+
+        let sender: Result<Identity, AuthError> = msg_sender();
+
+        // // check if creator already exists
+        let mut existing: Vec<u64> = storage.creators.get(sender.unwrap());
+
+        // add msg sender to creator list
+        if existing.len() < 1 {
+            let mut creatorList = ~Vec::new();
+            creatorList.push(index);
+            storage.creators.insert(sender.unwrap(), creatorList);
+        } else {
+            existing.push(index);
+            storage.creators.insert(sender.unwrap(), existing);
+        }
 
         return newProject
     }
@@ -130,6 +152,17 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_project(projectId: u64) -> Project{
+        storage.projectListings.get(projectId).unwrap()
+    }
+
+    #[storage(read)]
+    fn get_creator_list_length(creator: Identity) -> u64{
+        storage.creators.get(creator).len()
+    }
+
+    #[storage(read)]
+    fn get_created_project(creator: Identity, index: u64) -> Project{
+        let projectId = storage.creators.get(creator).get(index).unwrap();
         storage.projectListings.get(projectId).unwrap()
     }
 
