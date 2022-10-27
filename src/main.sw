@@ -51,10 +51,16 @@ abi WebGum {
     fn get_project(projectId: u64) -> Project;
 
     #[storage(read)]
+    fn get_projects_list_length() -> u64;
+
+    #[storage(read)]
     fn get_creator_list_length(creator: Identity) -> u64;
 
     #[storage(read)]
     fn get_created_project(creator: Identity, index: u64) -> Project;
+
+    #[storage(read)]
+    fn get_created_project_id(creator: Identity, index: u64) -> u64;
 
     #[storage(read)]
     fn get_buyer_list_length(buyer: Identity) -> u64;
@@ -83,22 +89,19 @@ impl WebGum for Contract {
             metadata: metadata,
         };
 
-        storage.projectListings.push(newProject);
-
-        let sender: Result<Identity, AuthError> = msg_sender();
-
         // // check if creator already exists
         let mut existing: Vec<u64> = storage.creators.get(sender.unwrap());
 
         // add msg sender to creator list
-        if existing.len() < 1 {
-            let mut creatorList = ~Vec::new();
-            creatorList.push(index);
-            storage.creators.insert(sender.unwrap(), creatorList);
-        } else {
-            existing.push(index);
+        if existing.len() > 0 {
+            existing.push(15);
             storage.creators.insert(sender.unwrap(), existing);
+        } else {
+            let mut creatorList = ~Vec::new();
+            creatorList.push(22);
+            storage.creators.insert(sender.unwrap(), creatorList);
         }
+        storage.projectListings.push(newProject);
 
         return newProject
     }
@@ -156,6 +159,11 @@ impl WebGum for Contract {
     }
 
     #[storage(read)]
+    fn get_projects_list_length() -> u64{
+        storage.projectListings.len()
+    }
+
+    #[storage(read)]
     fn get_creator_list_length(creator: Identity) -> u64{
         storage.creators.get(creator).len()
     }
@@ -164,6 +172,17 @@ impl WebGum for Contract {
     fn get_created_project(creator: Identity, index: u64) -> Project{
         let projectId = storage.creators.get(creator).get(index).unwrap();
         storage.projectListings.get(projectId).unwrap()
+    }
+
+    #[storage(read)]
+    fn get_created_project_id(creator: Identity, index: u64) -> u64{
+        // storage.creators.get(creator).get(index).unwrap()
+        let mut project_id = 55;
+        match storage.creators.get(creator).get(0) {
+            Option::Some(id) => project_id = id,
+            Option::None => project_id = 66,
+        }
+        return project_id
     }
 
     #[storage(read)]

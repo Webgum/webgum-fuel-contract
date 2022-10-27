@@ -40,11 +40,9 @@ async fn can_get_contract_id() {
 
     // get access to some test wallets
 
-    // this is the default wallet that will be used
-    // let wallet_1 = wallets.get(0).unwrap();
-
-    // println!("WALLETS VECTOR LENGTH: {:?}", wallets.len());
-
+    // this is the default wallet that will get used if no other one is specified
+    let wallet_1 = wallets.get(0).unwrap();
+    // println!("WALLET_1: {:?}", wallet_1);
     let wallet_2 = wallets.get(1).unwrap();
     // println!("WALLET_2: {:?}", wallet_2);
     let wallet_3 = wallets.get(2).unwrap();
@@ -56,117 +54,145 @@ async fn can_get_contract_id() {
     let price: u64 = 1;
 
     // make a project
-    let project1 = instance
-    .list_project(price, metadata)
-    .call()
-    .await.unwrap();
+    let project1 = instance.list_project(price, metadata).call().await.unwrap();
 
     // get project1
-    let project1_copy = instance
-    .get_project(0)
-    .call()
-    .await.unwrap();
+    let project1_copy = instance.get_project(0).call().await.unwrap();
 
     // make sure the project we made is equal to the project we got
     assert!(project1.value == project1_copy.value);
     assert!(project1.value.price == price);
     assert!(project1_copy.value.price == price);
-    // println!("Project created: {:?}", project1.value);
+    println!("Project 1 created: {:?}", project1.value);
 
     // project2 params
     let metadata2: fuels::core::types::SizedAsciiString<5> =
         "12345".try_into().expect("Should have succeeded");
     let price2: u64 = 25;
 
-     // make a project from wallet_2
-     let project2 = instance
-     ._with_wallet(wallet_3.clone())
-     .unwrap()
-     .list_project(price2, metadata2)
-     .call()
-     .await.unwrap();
-
-     let wallet_3_address: Address = wallet_3.clone().address().into();
- 
-     // check if creator list was updated
-     let creator_list_length = instance
-     .get_creator_list_length(Identity::Address(wallet_3_address))
-     .call()
-     .await.unwrap();
-    // println!("Creator List Length: {:?}", creator_list_length.value);
-    assert!(creator_list_length.value > 0);
-
-     // get created project for wallet_2
-     let project2_copy = instance
-     .get_created_project(Identity::Address(wallet_3_address), 0)
-     .call()
-     .await.unwrap();
-
-    println!("Project 2 Copy: {:?}", project2_copy.value);
-    println!("Project 2: {:?}", project2.value);
-    // assert!(project2_copy.value == project2.value);
-
-    
-
-    // Bytes representation of the asset ID of the "base" asset used for gas fees.
-    pub const BASE_ASSET_ID: AssetId = AssetId::new([0u8; 32]);
-
-    // call params to send the project price in the buy_project fn
-    let call_params = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
-
-    // buy project 0 from wallet_2
-    let identity = instance
-        ._with_wallet(wallet_2.clone())
-        .unwrap()
-        .buy_project(0)
-        .call_params(call_params)
-        .call()
-        .await
-        .unwrap();
-
-    // check if buyer list was updated
-    let mut buyer_list_length = instance
-        .get_buyer_list_length(identity.value.clone())
-        .call()
-        .await
-        .unwrap();
-    // println!("Buyer List Length: {:?}", buyer_list_length.value);
-    assert!(buyer_list_length.value > 0);
-
-   
-
-    let call_params_2 = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
-
-    // buy project 0 from wallet_3
-    let _identity_2 = instance
+    // make a project from wallet_3
+    let project2 = instance
         ._with_wallet(wallet_3.clone())
         .unwrap()
-        .buy_project(0)
-        .call_params(call_params_2)
+        .list_project(price2, metadata2)
         .call()
         .await
         .unwrap();
 
-    // println!("IDENTITY: {:?}", identity_2.value);
+        println!("Project 2 created: {:?}", project2.value);
+
+    // project3 params
+    let metadata3: fuels::core::types::SizedAsciiString<5> =
+        "sarah".try_into().expect("Should have succeeded");
+    let price3: u64 = 33;
+
+    // make another project from wallet_3
+    let project3 = instance
+        ._with_wallet(wallet_3.clone())
+        .unwrap()
+        .list_project(price3, metadata3)
+        .call()
+        .await
+        .unwrap();
+
+        println!("Project 3 created: {:?}", project3.value);
+
+    let wallet_1_address: Address = wallet_1.clone().address().into();
+    let wallet_1_id = Identity::Address(wallet_1_address);
+
+    let wallet_3_address: Address = wallet_3.clone().address().into();
+    let wallet_3_id = Identity::Address(wallet_3_address);
+
+    // check if creator list was updated
+    let creator_list_length = instance
+        .get_creator_list_length(wallet_3_id.clone())
+        .call()
+        .await
+        .unwrap();
+    println!("Creator List Length: {:?}", creator_list_length.value);
+    assert!(creator_list_length.value > 0);
+    
+
+    // make sure 3 projects have been created in total
+    let total_projects = instance.get_projects_list_length().call().await.unwrap();
+    println!("TOTAL PROJECTS: {:?}", total_projects.value);
+    assert!(total_projects.value == 3);
+
+    // // Bytes representation of the asset ID of the "base" asset used for gas fees.
+    // pub const BASE_ASSET_ID: AssetId = AssetId::new([0u8; 32]);
+
+    // // call params to send the project price in the buy_project fn
+    // let call_params = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
+
+    // // buy project 0 from wallet_2
+    // let _identity = instance
+    //     ._with_wallet(wallet_2.clone())
+    //     .unwrap()
+    //     .buy_project(0)
+    //     .call_params(call_params)
+    //     .call()
+    //     .await
+    //     .unwrap();
+
+    // get the project made by wallet_1
+    let project1_id = instance
+        .get_created_project_id(wallet_1_id.clone(), 0)
+        .call()
+        .await
+        .unwrap();
+    println!("Project 1 id: {:?}", project1_id.value);
+    // println!("Identity looked for: {:?}", wallet_1_id);
+
+    // get the first project wallet_3 minted
+    let project2_id = instance
+        .get_created_project_id(wallet_3_id.clone(), 0)
+        .call()
+        .await
+        .unwrap();
+    println!("Project 2 id: {:?}", project2_id.value);
+    // println!("Identity looked for: {:?}", wallet_3_id);
+
+    // // check if buyer list was updated
+    // let mut buyer_list_length = instance
+    //     .get_buyer_list_length(wallet_3_id.clone())
+    //     .call()
+    //     .await
+    //     .unwrap();
+    // // println!("Buyer List Length: {:?}", buyer_list_length.value);
+    // assert!(buyer_list_length.value > 0);
+
+    // let call_params_2 = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
+
+    // // buy project 1 from wallet_3
+    // let _identity_2 = instance
+    //     ._with_wallet(wallet_3.clone())
+    //     .unwrap()
+    //     .buy_project(1)
+    //     .call_params(call_params_2)
+    //     .call()
+    //     .await
+    //     .unwrap();
+
+    // // println!("IDENTITY: {:?}", identity_2.value);
 
     // check if buyer list was updated
-    buyer_list_length = instance
-        .get_buyer_list_length(identity.value.clone())
-        .call()
-        .await
-        .unwrap();
-    // println!("Buyer List Length: {:?}", buyer_list_length.value);
-    assert!(buyer_list_length.value > 0);
+    // buyer_list_length = instance
+    //     .get_buyer_list_length(identity.value.clone())
+    //     .call()
+    //     .await
+    //     .unwrap();
+    // // println!("Buyer List Length: {:?}", buyer_list_length.value);
+    // assert!(buyer_list_length.value > 0);
 
-    // check if has_project returns true
-    let has_project = instance
-        .has_bought_project(0, identity.value.clone())
-        .call()
-        .await
-        .unwrap();
+    // // check if has_project returns true
+    // let has_project = instance
+    //     .has_bought_project(0, identity.value.clone())
+    //     .call()
+    //     .await
+    //     .unwrap();
 
-    let val = has_project.value;
+    // let val = has_project.value;
 
-    // println!("HAS PROJECT? {:?}", val);
-    assert!(val == true);
+    // // println!("HAS PROJECT? {:?}", val);
+    // assert!(val == true);
 }
