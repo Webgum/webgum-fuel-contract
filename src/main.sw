@@ -12,16 +12,19 @@ use std::{
 };
 
 pub struct Project {
-    projectId: u64,
+    project_id: u64,
     price: u64,
     ownerAddress: Identity,
     // use IPFS CID here?
     metadata: str[5],
+    // rating: u64,
 }
 
 pub enum InvalidError {
     IncorrectAssetId: (),
     NotEnoughTokens: (),
+    CantReview: (),
+    InvalidRating: (),
 }
 
 struct Vector {
@@ -57,10 +60,13 @@ impl Vector {
 }
 
 storage {
-    // ratings: map of project ids to a vector of ratings
+    // ratings: a vector of tuples with the project id, the Identity, and the rating
+    ratings: StorageVec<(u64, Identity, u64)> = StorageVec {},
+    // ratings_map: map of project id => Vector of rating index locations
+    ratings_map: StorageMap<u64, Vector> = StorageMap {},
     buyers: StorageMap<Identity, Vector> = StorageMap {},
     creators: StorageMap<Identity, Vector> = StorageMap {},
-    projectListings: StorageVec<Project> = StorageVec {},
+    project_listings: StorageVec<Project> = StorageVec {},
     // commissionPercent: u64 = 420,
     // owner: Identity =  Identity::Address(ADDRESS_HERE);
 }
@@ -70,16 +76,16 @@ abi WebGum {
     fn list_project(price: u64, metadata: str[5]) -> Project;
 
     // #[storage(read, write)]
-    // fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project;
+    // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project;
 
     #[storage(read, write)]
-    fn buy_project(projectId: u64) -> Identity;
+    fn buy_project(project_id: u64) -> Identity;
 
-    // #[storage(read, write)]
-    // fn reviewProject(projectId: u64, rating: u64);
+    #[storage(read, write)]
+    fn review_project(project_id: u64, rating: u64) -> u64;
 
     #[storage(read)]
-    fn get_project(projectId: u64) -> Project;
+    fn get_project(project_id: u64) -> Project;
 
     #[storage(read)]
     fn get_projects_list_length() -> u64;
@@ -100,27 +106,34 @@ abi WebGum {
     fn get_bought_project(buyer: Identity, index: u64) -> Project;
 
     #[storage(read)]
-    fn has_bought_project(projectId: u64, wallet: Identity) -> bool;
+    fn has_bought_project(project_id: u64, wallet: Identity) -> bool;
 
     // #[storage(read, write)]
     // fn update_owner(identity: Identity);
 
-    #[storage(read, write)]
+    #[storage(read)]
     fn get_creator_vector(id: Identity) -> Vector;
+
+    #[storage(read)]
+    fn get_buyer_vector(id: Identity) -> Vector;
+
+    #[storage(read)]
+    fn get_project_ratings_ix(project_id: u64) -> Vector;
 
 }
 
 impl WebGum for Contract {
     #[storage(read, write)]
     fn list_project(price: u64, metadata: str[5]) -> Project{
-        let index = storage.projectListings.len() + 1;
+        let index = storage.project_listings.len() + 1;
         let sender: Result<Identity, AuthError> = msg_sender();
 
         let newProject =  Project {
-            projectId: index,
+            project_id: index,
             price: price,
             ownerAddress: sender.unwrap(),
             metadata: metadata,
+            // rating: 0,
         };
 
         let mut existing: Vector = storage.creators.get(sender.unwrap());
@@ -129,14 +142,14 @@ impl WebGum for Contract {
         existing.push(index);
         storage.creators.insert(sender.unwrap(), existing);
 
-        storage.projectListings.push(newProject);
+        storage.project_listings.push(newProject);
 
         return newProject
     }
 
     // #[storage(read, write)]
-    // fn update_project(projectId: u64, price: u64, metadata: str[50]) -> Project{
-    //     let project = storage.projectListings.get(projectId).unwrap()
+    // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project{
+    //     let project = storage.project_listings.get(project_id).unwrap()
         
     // }
 
@@ -145,7 +158,7 @@ impl WebGum for Contract {
         let asset_id = msg_asset_id();
         let amount = msg_amount();
 
-        let project: Project = storage.projectListings.get(project_id).unwrap();
+        let project: Project = storage.project_listings.get(project_id).unwrap();
 
         // require payment
         require(asset_id == BASE_ASSET_ID, InvalidError::IncorrectAssetId);
@@ -169,19 +182,42 @@ impl WebGum for Contract {
         return id;
     }
 
-    // #[storage(read, write)]
-    // fn reviewProject(projectId: u64, rating: u64){
+    #[storage(read, write)]
+    fn review_project(project_id: u64, rating: u64) -> u64{
+        require(rating < 6, InvalidError::InvalidRating);
+        let sender: Result<Identity, AuthError> = msg_sender();
+        let mut existing: Vector = storage.buyers.get(sender.unwrap());
+        let mut i = 0;
+        let mut can_review = false;
+        while i < existing.current_ix {
+            let project = existing.get(i);
+            if project == project_id {
+                can_review = true;
+            }
+            i += 1;
+        }
 
-    // }
+        // require sender has bought the project
+        require(can_review, InvalidError::CantReview);
+        let index = storage.ratings.len();
+        // add rating to ratings vector
+        storage.ratings.push((project_id, sender.unwrap(), rating));
+
+        let mut existing: Vector = storage.ratings_map.get(project_id);
+        // add rating index to ratings_map
+        existing.push(index);
+        storage.ratings_map.insert(project_id, existing);
+        index
+    }
 
     #[storage(read)]
-    fn get_project(projectId: u64) -> Project{
-        storage.projectListings.get(projectId).unwrap()
+    fn get_project(project_id: u64) -> Project{
+        storage.project_listings.get(project_id).unwrap()
     }
 
     #[storage(read)]
     fn get_projects_list_length() -> u64{
-        storage.projectListings.len()
+        storage.project_listings.len()
     }
 
     #[storage(read)]
@@ -191,8 +227,8 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_created_project(creator: Identity, index: u64) -> Project{
-        let projectId = storage.creators.get(creator).get(index);
-        storage.projectListings.get(projectId).unwrap()
+        let project_id = storage.creators.get(creator).get(index);
+        storage.project_listings.get(project_id).unwrap()
     }
 
     #[storage(read)]
@@ -207,18 +243,18 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_bought_project(buyer: Identity, index: u64) -> Project{
-        let projectId = storage.buyers.get(buyer).get(index);
-        storage.projectListings.get(projectId).unwrap()
+        let project_id = storage.buyers.get(buyer).get(index);
+        storage.project_listings.get(project_id).unwrap()
     }
 
     #[storage(read)]
-    fn has_bought_project(projectId: u64, wallet: Identity) -> bool{
+    fn has_bought_project(project_id: u64, wallet: Identity) -> bool{
         let mut existing: Vector = storage.buyers.get(wallet);
 
         let mut i = 0;
         while i < existing.current_ix {
             let project = existing.get(i);
-            if project == projectId {
+            if project == project_id {
                 return true;
             }
             i += 1;
@@ -233,9 +269,21 @@ impl WebGum for Contract {
     //     storage.owner = Option::Some(identity);
     // }
 
-    #[storage(read, write)]
+    #[storage(read)]
     fn get_creator_vector(id: Identity) -> Vector {
         let val: Vector = storage.creators.get(id);
+        val
+    }
+
+    #[storage(read)]
+    fn get_buyer_vector(id: Identity) -> Vector {
+        let val: Vector = storage.buyers.get(id);
+        val
+    }
+
+    #[storage(read)]
+    fn get_project_ratings_ix(project_id: u64) -> Vector {
+        let val: Vector = storage.ratings_map.get(project_id);
         val
     }
 }

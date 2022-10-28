@@ -148,6 +148,18 @@ async fn can_get_contract_id() {
         .call()
         .await
         .unwrap();
+    
+    let call_params = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
+
+     // buy project 0 from wallet_3
+     let _identity_2 = instance
+     ._with_wallet(wallet_3.clone())
+     .unwrap()
+     .buy_project(0)
+     .call_params(call_params)
+     .call()
+     .await
+     .unwrap();
 
     // get the project made by wallet_1
     let project1_id = instance
@@ -209,4 +221,32 @@ async fn can_get_contract_id() {
 
     println!("HAS PROJECT? {:?}", val);
     assert!(val == true);
+
+    // review project 0 from wallet_2
+    let _result = instance
+    ._with_wallet(wallet_2.clone())
+        .unwrap()
+        .review_project(0, 4)
+        .call()
+        .await
+        .unwrap();
+    
+    // review project 0 from wallet_3
+    let _result_2 = instance
+    ._with_wallet(wallet_3.clone())
+        .unwrap()
+        .review_project(0, 5)
+        .call()
+        .await
+        .unwrap();
+
+    // get project 0 ratings indexes
+    let ratings = instance
+        .get_project_ratings_ix(0)
+        .call()
+        .await
+        .unwrap();
+    println!("RATINGS: {:?}", ratings.value);
+
+
 }
