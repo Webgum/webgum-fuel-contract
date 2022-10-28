@@ -14,10 +14,9 @@ use std::{
 pub struct Project {
     project_id: u64,
     price: u64,
-    ownerAddress: Identity,
+    owner_address: Identity,
     // use IPFS CID here?
     metadata: str[5],
-    // rating: u64,
 }
 
 pub enum InvalidError {
@@ -131,9 +130,8 @@ impl WebGum for Contract {
         let newProject =  Project {
             project_id: index,
             price: price,
-            ownerAddress: sender.unwrap(),
+            owner_address: sender.unwrap(),
             metadata: metadata,
-            // rating: 0,
         };
 
         let mut existing: Vector = storage.creators.get(sender.unwrap());
@@ -175,7 +173,7 @@ impl WebGum for Contract {
         // TO DO: add commission
          //send the payout
          // this isn't working 
-        // transfer(amount, asset_id, project.ownerAddress);
+        // transfer(amount, asset_id, project.owner_address);
 
         let id: Identity = sender.unwrap();
 
@@ -199,12 +197,14 @@ impl WebGum for Contract {
 
         // require sender has bought the project
         require(can_review, InvalidError::CantReview);
-        let index = storage.ratings.len();
+
+
         // add rating to ratings vector
         storage.ratings.push((project_id, sender.unwrap(), rating));
 
-        let mut existing: Vector = storage.ratings_map.get(project_id);
         // add rating index to ratings_map
+        let mut existing: Vector = storage.ratings_map.get(project_id);
+        let index = storage.ratings.len();
         existing.push(index);
         storage.ratings_map.insert(project_id, existing);
         index
