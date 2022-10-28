@@ -48,6 +48,16 @@ async fn can_get_contract_id() {
     let wallet_3 = wallets.get(2).unwrap();
     // println!("WALLET_3: {:?}", wallet_3);
 
+
+    let wallet_1_address: Address = wallet_1.clone().address().into();
+    let wallet_1_id = Identity::Address(wallet_1_address);
+
+    let wallet_2_address: Address = wallet_2.clone().address().into();
+    let wallet_2_id = Identity::Address(wallet_2_address);
+
+    let wallet_3_address: Address = wallet_3.clone().address().into();
+    let wallet_3_id = Identity::Address(wallet_3_address);
+
     // project1 params
     let metadata: fuels::core::types::SizedAsciiString<5> =
         "abcde".try_into().expect("Should have succeeded");
@@ -64,6 +74,13 @@ async fn can_get_contract_id() {
     assert!(project1.value.price == price);
     assert!(project1_copy.value.price == price);
     println!("Project 1 created: {:?}", project1.value);
+
+    
+    let creator_vector_1 = instance.get_creator_vector(wallet_1_id.clone()).call().await.unwrap();
+    println!("Creator Vector 1: {:?}", creator_vector_1.value);
+
+    let creator_vector_3 = instance.get_creator_vector(wallet_3_id.clone()).call().await.unwrap();
+    println!("Creator Vector 3 BEFORE: {:?}", creator_vector_3.value);
 
     // project2 params
     let metadata2: fuels::core::types::SizedAsciiString<5> =
@@ -97,11 +114,9 @@ async fn can_get_contract_id() {
 
         println!("Project 3 created: {:?}", project3.value);
 
-    let wallet_1_address: Address = wallet_1.clone().address().into();
-    let wallet_1_id = Identity::Address(wallet_1_address);
+        let creator_vector_3_copy = instance.get_creator_vector(wallet_3_id.clone()).call().await.unwrap();
+        println!("Creator Vector 3 AFTER: {:?}", creator_vector_3_copy.value);
 
-    let wallet_3_address: Address = wallet_3.clone().address().into();
-    let wallet_3_id = Identity::Address(wallet_3_address);
 
     // check if creator list was updated
     let creator_list_length = instance
@@ -118,21 +133,21 @@ async fn can_get_contract_id() {
     println!("TOTAL PROJECTS: {:?}", total_projects.value);
     assert!(total_projects.value == 3);
 
-    // // Bytes representation of the asset ID of the "base" asset used for gas fees.
-    // pub const BASE_ASSET_ID: AssetId = AssetId::new([0u8; 32]);
+    // Bytes representation of the asset ID of the "base" asset used for gas fees.
+    pub const BASE_ASSET_ID: AssetId = AssetId::new([0u8; 32]);
 
-    // // call params to send the project price in the buy_project fn
-    // let call_params = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
+    // call params to send the project price in the buy_project fn
+    let call_params = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
 
-    // // buy project 0 from wallet_2
-    // let _identity = instance
-    //     ._with_wallet(wallet_2.clone())
-    //     .unwrap()
-    //     .buy_project(0)
-    //     .call_params(call_params)
-    //     .call()
-    //     .await
-    //     .unwrap();
+    // buy project 0 from wallet_2
+    let _identity = instance
+        ._with_wallet(wallet_2.clone())
+        .unwrap()
+        .buy_project(0)
+        .call_params(call_params)
+        .call()
+        .await
+        .unwrap();
 
     // get the project made by wallet_1
     let project1_id = instance
@@ -152,47 +167,46 @@ async fn can_get_contract_id() {
     println!("Project 2 id: {:?}", project2_id.value);
     println!("Identity looked for: {:?}", wallet_3_id);
 
-    // // check if buyer list was updated
-    // let mut buyer_list_length = instance
-    //     .get_buyer_list_length(wallet_3_id.clone())
-    //     .call()
-    //     .await
-    //     .unwrap();
-    // // println!("Buyer List Length: {:?}", buyer_list_length.value);
-    // assert!(buyer_list_length.value > 0);
+    // check if buyer list for wallet_2 was updated
+    let mut buyer_list_length = instance
+        .get_buyer_list_length(wallet_2_id.clone())
+        .call()
+        .await
+        .unwrap();
+    println!("Buyer List Length: {:?}", buyer_list_length.value);
+    assert!(buyer_list_length.value > 0);
 
-    // let call_params_2 = CallParameters::new(Some(price), Some(BASE_ASSET_ID), None);
+    let call_params_2 = CallParameters::new(Some(price2), Some(BASE_ASSET_ID), None);
 
-    // // buy project 1 from wallet_3
-    // let _identity_2 = instance
-    //     ._with_wallet(wallet_3.clone())
-    //     .unwrap()
-    //     .buy_project(1)
-    //     .call_params(call_params_2)
-    //     .call()
-    //     .await
-    //     .unwrap();
+    // buy project 1 from wallet_3
+    let _identity_2 = instance
+        ._with_wallet(wallet_3.clone())
+        .unwrap()
+        .buy_project(1)
+        .call_params(call_params_2)
+        .call()
+        .await
+        .unwrap();
 
-    // // println!("IDENTITY: {:?}", identity_2.value);
 
     // check if buyer list was updated
-    // buyer_list_length = instance
-    //     .get_buyer_list_length(identity.value.clone())
-    //     .call()
-    //     .await
-    //     .unwrap();
-    // // println!("Buyer List Length: {:?}", buyer_list_length.value);
-    // assert!(buyer_list_length.value > 0);
+    buyer_list_length = instance
+        .get_buyer_list_length(wallet_3_id.clone())
+        .call()
+        .await
+        .unwrap();
+    println!("Buyer List Length: {:?}", buyer_list_length.value);
+    assert!(buyer_list_length.value > 0);
 
-    // // check if has_project returns true
-    // let has_project = instance
-    //     .has_bought_project(0, identity.value.clone())
-    //     .call()
-    //     .await
-    //     .unwrap();
+    // check if has_project returns true
+    let has_project = instance
+        .has_bought_project(1, wallet_3_id.clone())
+        .call()
+        .await
+        .unwrap();
 
-    // let val = has_project.value;
+    let val = has_project.value;
 
-    // // println!("HAS PROJECT? {:?}", val);
-    // assert!(val == true);
+    println!("HAS PROJECT? {:?}", val);
+    assert!(val == true);
 }

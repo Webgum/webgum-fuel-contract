@@ -42,8 +42,6 @@ impl Vector {
     }
 
     fn push(ref mut self, val: u64) {
-        
-
         // only update if array not full
         match self.current_ix {
             0 => self.inner = [val, 0, 0, 0, 0],
@@ -53,8 +51,7 @@ impl Vector {
             4 => self.inner = [self.inner[0], self.inner[1], self.inner[2], self.inner[3], val],
             _ => revert(5),
         }
-            
-            self.current_ix = self.current_ix + 1; 
+        self.current_ix = self.current_ix + 1; 
         
     }
 }
@@ -108,6 +105,9 @@ abi WebGum {
     // #[storage(read, write)]
     // fn update_owner(identity: Identity);
 
+    #[storage(read, write)]
+    fn get_creator_vector(id: Identity) -> Vector;
+
 }
 
 impl WebGum for Contract {
@@ -123,18 +123,9 @@ impl WebGum for Contract {
             metadata: metadata,
         };
 
-        // // // check if creator already exists
-        // let mut existing: Vec<u64> = storage.creators.get(sender.unwrap());
-
-        // // add msg sender to creator list
-        // existing.push(15);
-        // storage.creators.insert(sender.unwrap(), existing);
-
-         // // check if buyer already exists
         let mut existing: Vector = storage.creators.get(sender.unwrap());
 
         // add msg sender to buyer list
- 
         existing.push(index);
         storage.creators.insert(sender.unwrap(), existing);
 
@@ -150,11 +141,11 @@ impl WebGum for Contract {
     // }
 
     #[storage(read, write)]
-    fn buy_project(projectId: u64) -> Identity {
+    fn buy_project(project_id: u64) -> Identity {
         let asset_id = msg_asset_id();
         let amount = msg_amount();
 
-        let project: Project = storage.projectListings.get(projectId).unwrap();
+        let project: Project = storage.projectListings.get(project_id).unwrap();
 
         // require payment
         require(asset_id == BASE_ASSET_ID, InvalidError::IncorrectAssetId);
@@ -162,19 +153,16 @@ impl WebGum for Contract {
         
         let sender: Result<Identity, AuthError> = msg_sender();
 
-        // // check if buyer already exists
         let mut existing: Vector = storage.buyers.get(sender.unwrap());
 
         // add msg sender to buyer list
- 
-        existing.push(projectId);
+        existing.push(project_id);
         storage.buyers.insert(sender.unwrap(), existing);
-    
 
         // TO DO: add commission
          //send the payout
          // this isn't working 
-        transfer(amount, asset_id, project.ownerAddress);
+        // transfer(amount, asset_id, project.ownerAddress);
 
         let id: Identity = sender.unwrap();
 
@@ -225,16 +213,16 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn has_bought_project(projectId: u64, wallet: Identity) -> bool{
-        let existing: Vector = storage.buyers.get(wallet);
+        let mut existing: Vector = storage.buyers.get(wallet);
 
-        // let mut i = 0;
-        // while i < existing.len() {
-        //     let project = existing.get(i).unwrap();
-        //     if project == projectId {
-        //         return true;
-        //     }
-        //     i += 1;
-        // }
+        let mut i = 0;
+        while i < existing.current_ix {
+            let project = existing.get(i);
+            if project == projectId {
+                return true;
+            }
+            i += 1;
+        }
 
         return false;
 
@@ -244,4 +232,10 @@ impl WebGum for Contract {
     //  fn update_owner(identity: Identity) {
     //     storage.owner = Option::Some(identity);
     // }
+
+    #[storage(read, write)]
+    fn get_creator_vector(id: Identity) -> Vector {
+        let val: Vector = storage.creators.get(id);
+        val
+    }
 }
