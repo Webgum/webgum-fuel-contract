@@ -24,11 +24,45 @@ pub enum InvalidError {
     NotEnoughTokens: (),
 }
 
+struct Vector {
+    inner: [u64; 5],
+    current_ix: u64
+}
+
+impl Vector {
+    fn new() -> Self {
+        Self {
+            inner: [0; 5],
+            current_ix: 0,
+        }
+    }
+
+    fn get(ref mut self, ix: u64) -> u64 { 
+        self.inner[ix]
+    }
+
+    fn push(ref mut self, val: u64) {
+        
+
+        // only update if array not full
+        match self.current_ix {
+            0 => self.inner = [val, 0, 0, 0, 0],
+            1 => self.inner = [self.inner[0], val, 0, 0, 0],
+            2 => self.inner = [self.inner[0], self.inner[1], val, 0, 0],
+            3 => self.inner = [self.inner[0], self.inner[1], self.inner[2], val, 0],
+            4 => self.inner = [self.inner[0], self.inner[1], self.inner[2], self.inner[3], val],
+            _ => revert(5),
+        }
+            
+            self.current_ix = self.current_ix + 1; 
+        
+    }
+}
+
 storage {
-    // map of project ids to a vector of ratings
-    // ratings: StorageMap<u64, Vec<u64>> = StorageMap {},
-    buyers: StorageMap<Identity, Vec<u64>> = StorageMap {},
-    creators: StorageMap<Identity, Vec<u64>> = StorageMap {},
+    // ratings: map of project ids to a vector of ratings
+    buyers: StorageMap<Identity, Vector> = StorageMap {},
+    creators: StorageMap<Identity, Vector> = StorageMap {},
     projectListings: StorageVec<Project> = StorageVec {},
     // commissionPercent: u64 = 420,
     // owner: Identity =  Identity::Address(ADDRESS_HERE);
@@ -79,7 +113,7 @@ abi WebGum {
 impl WebGum for Contract {
     #[storage(read, write)]
     fn list_project(price: u64, metadata: str[5]) -> Project{
-        let index = storage.projectListings.len();
+        let index = storage.projectListings.len() + 1;
         let sender: Result<Identity, AuthError> = msg_sender();
 
         let newProject =  Project {
@@ -89,18 +123,21 @@ impl WebGum for Contract {
             metadata: metadata,
         };
 
-        // // check if creator already exists
-        let mut existing: Vec<u64> = storage.creators.get(sender.unwrap());
+        // // // check if creator already exists
+        // let mut existing: Vec<u64> = storage.creators.get(sender.unwrap());
 
-        // add msg sender to creator list
-        if existing.len() > 0 {
-            existing.push(15);
-            storage.creators.insert(sender.unwrap(), existing);
-        } else {
-            let mut creatorList = ~Vec::new();
-            creatorList.push(22);
-            storage.creators.insert(sender.unwrap(), creatorList);
-        }
+        // // add msg sender to creator list
+        // existing.push(15);
+        // storage.creators.insert(sender.unwrap(), existing);
+
+         // // check if buyer already exists
+        let mut existing: Vector = storage.creators.get(sender.unwrap());
+
+        // add msg sender to buyer list
+ 
+        existing.push(index);
+        storage.creators.insert(sender.unwrap(), existing);
+
         storage.projectListings.push(newProject);
 
         return newProject
@@ -126,22 +163,18 @@ impl WebGum for Contract {
         let sender: Result<Identity, AuthError> = msg_sender();
 
         // // check if buyer already exists
-        let mut existing: Vec<u64> = storage.buyers.get(sender.unwrap());
+        let mut existing: Vector = storage.buyers.get(sender.unwrap());
 
         // add msg sender to buyer list
-        if existing.len() < 1 {
-            let mut buyerList = ~Vec::new();
-            buyerList.push(projectId);
-            storage.buyers.insert(sender.unwrap(), buyerList);
-        } else {
-            existing.push(projectId);
-            storage.buyers.insert(sender.unwrap(), existing);
-        }
+ 
+        existing.push(projectId);
+        storage.buyers.insert(sender.unwrap(), existing);
+    
 
-        // // TO DO: add commission
-        // //send the payout
-        // this isn't working 
-        // transfer(amount, asset_id, project.ownerAddress);
+        // TO DO: add commission
+         //send the payout
+         // this isn't working 
+        transfer(amount, asset_id, project.ownerAddress);
 
         let id: Identity = sender.unwrap();
 
@@ -165,49 +198,43 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_creator_list_length(creator: Identity) -> u64{
-        storage.creators.get(creator).len()
+        storage.creators.get(creator).current_ix
     }
 
     #[storage(read)]
     fn get_created_project(creator: Identity, index: u64) -> Project{
-        let projectId = storage.creators.get(creator).get(index).unwrap();
+        let projectId = storage.creators.get(creator).get(index);
         storage.projectListings.get(projectId).unwrap()
     }
 
     #[storage(read)]
     fn get_created_project_id(creator: Identity, index: u64) -> u64{
-        // storage.creators.get(creator).get(index).unwrap()
-        let mut project_id = 55;
-        match storage.creators.get(creator).get(0) {
-            Option::Some(id) => project_id = id,
-            Option::None => project_id = 66,
-        }
-        return project_id
+        storage.creators.get(creator).get(index)
     }
 
     #[storage(read)]
     fn get_buyer_list_length(buyer: Identity) -> u64{
-        storage.buyers.get(buyer).len()
+        storage.buyers.get(buyer).current_ix
     }
 
     #[storage(read)]
     fn get_bought_project(buyer: Identity, index: u64) -> Project{
-        let projectId = storage.buyers.get(buyer).get(index).unwrap();
+        let projectId = storage.buyers.get(buyer).get(index);
         storage.projectListings.get(projectId).unwrap()
     }
 
     #[storage(read)]
     fn has_bought_project(projectId: u64, wallet: Identity) -> bool{
-        let existing: Vec<u64> = storage.buyers.get(wallet);
+        let existing: Vector = storage.buyers.get(wallet);
 
-        let mut i = 0;
-        while i < existing.len() {
-            let project = existing.get(i).unwrap();
-            if project == projectId {
-                return true;
-            }
-            i += 1;
-        }
+        // let mut i = 0;
+        // while i < existing.len() {
+        //     let project = existing.get(i).unwrap();
+        //     if project == projectId {
+        //         return true;
+        //     }
+        //     i += 1;
+        // }
 
         return false;
 

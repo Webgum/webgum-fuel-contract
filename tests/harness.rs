@@ -141,7 +141,7 @@ async fn can_get_contract_id() {
         .await
         .unwrap();
     println!("Project 1 id: {:?}", project1_id.value);
-    // println!("Identity looked for: {:?}", wallet_1_id);
+    println!("Identity looked for: {:?}", wallet_1_id);
 
     // get the first project wallet_3 minted
     let project2_id = instance
@@ -150,7 +150,7 @@ async fn can_get_contract_id() {
         .await
         .unwrap();
     println!("Project 2 id: {:?}", project2_id.value);
-    // println!("Identity looked for: {:?}", wallet_3_id);
+    println!("Identity looked for: {:?}", wallet_3_id);
 
     // // check if buyer list was updated
     // let mut buyer_list_length = instance
