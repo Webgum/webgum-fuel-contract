@@ -33,6 +33,7 @@ pub enum InvalidError {
     CantReview: (),
     InvalidRating: (),
     MaxBuyers: (),
+    NotProjectOwner: (),
 }
 
 struct Vector {
@@ -85,8 +86,8 @@ abi WebGum {
     #[storage(read, write)]
     fn list_project(price: u64, max_buyers: u64, metadata: str[5]) -> Project;
 
-    // #[storage(read, write)]
-    // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project;
+    #[storage(read, write)]
+    fn update_project(project_id: u64, price: u64, max_buyers: u64, metadata: str[5]) -> Project;
 
     #[storage(read, write)]
     fn buy_project(project_id: u64) -> Identity;
@@ -160,11 +161,25 @@ impl WebGum for Contract {
         return newProject
     }
 
-    // #[storage(read, write)]
-    // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project{
-    //     let project = storage.project_listings.get(project_id).
+    #[storage(read, write)]
+    fn update_project(project_id: u64, price: u64, max_buyers: u64, metadata: str[5]) -> Project{
+        let mut project: Project = storage.project_listings.get(project_id);
+
+        // only allow the owner to update
+        let sender: Result<Identity, AuthError> = msg_sender();
+        require(sender.unwrap() == project.owner_address, InvalidError::NotProjectOwner);
+        // make sure new max_buyers isn't less than buyer_count
+        require(max_buyers > project.buyer_count, InvalidError::MaxBuyers);
+
+        // update project
+        project.price = price;
+        project.metadata = metadata;
+        project.max_buyers = max_buyers;
+        storage.project_listings.insert(project_id, project);
+
+        return project;
         
-    // }
+    }
 
     #[storage(read, write)]
     fn buy_project(project_id: u64) -> Identity {
@@ -195,7 +210,7 @@ impl WebGum for Contract {
         existing.push(project_id);
         storage.buyers.insert(sender.unwrap(), existing);
 
-        // TO DO: add commission
+        // TO DO: add commission, rewards
          //send the payout
          // this isn't working 
         // transfer(amount, asset_id, project.owner_address);
