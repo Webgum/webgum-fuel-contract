@@ -62,9 +62,10 @@ async fn can_get_contract_id() {
     let metadata: fuels::core::types::SizedAsciiString<5> =
         "abcde".try_into().expect("Should have succeeded");
     let price: u64 = 1;
+    let max_buyers: u64 = 3;
 
     // make a project
-    let project1 = instance.list_project(price, metadata).call().await.unwrap();
+    let project1 = instance.list_project(price, max_buyers, metadata).call().await.unwrap();
 
     // get project1
     let project1_copy = instance.get_project(0).call().await.unwrap();
@@ -86,12 +87,13 @@ async fn can_get_contract_id() {
     let metadata2: fuels::core::types::SizedAsciiString<5> =
         "12345".try_into().expect("Should have succeeded");
     let price2: u64 = 25;
+    let max_buyers2: u64 = 0;
 
     // make a project from wallet_3
     let project2 = instance
         ._with_wallet(wallet_3.clone())
         .unwrap()
-        .list_project(price2, metadata2)
+        .list_project(price2, max_buyers2, metadata2)
         .call()
         .await
         .unwrap();
@@ -102,12 +104,13 @@ async fn can_get_contract_id() {
     let metadata3: fuels::core::types::SizedAsciiString<5> =
         "sarah".try_into().expect("Should have succeeded");
     let price3: u64 = 33;
+    let max_buyers3: u64 = 1000;
 
     // make another project from wallet_3
     let project3 = instance
         ._with_wallet(wallet_3.clone())
         .unwrap()
-        .list_project(price3, metadata3)
+        .list_project(price3, max_buyers3, metadata3)
         .call()
         .await
         .unwrap();
@@ -247,6 +250,14 @@ async fn can_get_contract_id() {
         .await
         .unwrap();
     println!("RATINGS: {:?}", ratings.value);
+
+    // get project2
+    let project2_copy = instance.get_project(1).call().await.unwrap();
+    println!("PROJECT 2 COPY: {:?}", project2_copy.value);
+
+     // get project1
+     let project1_copy2 = instance.get_project(0).call().await.unwrap();
+     println!("PROJECT 1 COPY: {:?}", project1_copy2.value);
 
 
 }

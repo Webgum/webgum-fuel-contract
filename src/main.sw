@@ -14,9 +14,17 @@ use std::{
 pub struct Project {
     project_id: u64,
     price: u64,
+    max_buyers: u64,
+    buyer_count: u64,
     owner_address: Identity,
     // use IPFS CID here?
     metadata: str[5],
+}
+
+impl Project {
+    fn update_buyer_count(ref mut self){
+        self.buyer_count = self.buyer_count + 1;
+    }
 }
 
 pub enum InvalidError {
@@ -24,6 +32,7 @@ pub enum InvalidError {
     NotEnoughTokens: (),
     CantReview: (),
     InvalidRating: (),
+    MaxBuyers: (),
 }
 
 struct Vector {
@@ -65,14 +74,16 @@ storage {
     ratings_map: StorageMap<u64, Vector> = StorageMap {},
     buyers: StorageMap<Identity, Vector> = StorageMap {},
     creators: StorageMap<Identity, Vector> = StorageMap {},
-    project_listings: StorageVec<Project> = StorageVec {},
+    // project id => Project
+    project_listings: StorageMap<u64, Project> = StorageMap {},
+    project_count: u64 = 0,
     // commissionPercent: u64 = 420,
     // owner: Identity =  Identity::Address(ADDRESS_HERE);
 }
 
 abi WebGum {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[5]) -> Project;
+    fn list_project(price: u64, max_buyers: u64, metadata: str[5]) -> Project;
 
     // #[storage(read, write)]
     // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project;
@@ -123,13 +134,16 @@ abi WebGum {
 
 impl WebGum for Contract {
     #[storage(read, write)]
-    fn list_project(price: u64, metadata: str[5]) -> Project{
-        let index = storage.project_listings.len() + 1;
+    fn list_project(price: u64, max_buyers: u64, metadata: str[5]) -> Project{
+        let index = storage.project_count;
         let sender: Result<Identity, AuthError> = msg_sender();
 
         let newProject =  Project {
             project_id: index,
             price: price,
+            // if unlimited, set to 0
+            max_buyers: max_buyers,
+            buyer_count: 0,
             owner_address: sender.unwrap(),
             metadata: metadata,
         };
@@ -140,14 +154,15 @@ impl WebGum for Contract {
         existing.push(index);
         storage.creators.insert(sender.unwrap(), existing);
 
-        storage.project_listings.push(newProject);
+        storage.project_listings.insert(index, newProject);
+        storage.project_count = storage.project_count + 1;
 
         return newProject
     }
 
     // #[storage(read, write)]
     // fn update_project(project_id: u64, price: u64, metadata: str[50]) -> Project{
-    //     let project = storage.project_listings.get(project_id).unwrap()
+    //     let project = storage.project_listings.get(project_id).
         
     // }
 
@@ -156,7 +171,17 @@ impl WebGum for Contract {
         let asset_id = msg_asset_id();
         let amount = msg_amount();
 
-        let project: Project = storage.project_listings.get(project_id).unwrap();
+        let mut project: Project = storage.project_listings.get(project_id);
+
+        if(project.max_buyers > 0){
+            // require buyer_count to be less than the max_buyers limit
+            require(project.max_buyers > project.buyer_count, InvalidError::MaxBuyers);
+        }
+
+        // add 1 to the buyer count
+        project.update_buyer_count();
+        // update project_listings
+        storage.project_listings.insert(project_id, project);
 
         // require payment
         require(asset_id == BASE_ASSET_ID, InvalidError::IncorrectAssetId);
@@ -212,12 +237,12 @@ impl WebGum for Contract {
 
     #[storage(read)]
     fn get_project(project_id: u64) -> Project{
-        storage.project_listings.get(project_id).unwrap()
+        storage.project_listings.get(project_id)
     }
 
     #[storage(read)]
     fn get_projects_list_length() -> u64{
-        storage.project_listings.len()
+        storage.project_count
     }
 
     #[storage(read)]
@@ -228,7 +253,7 @@ impl WebGum for Contract {
     #[storage(read)]
     fn get_created_project(creator: Identity, index: u64) -> Project{
         let project_id = storage.creators.get(creator).get(index);
-        storage.project_listings.get(project_id).unwrap()
+        storage.project_listings.get(project_id)
     }
 
     #[storage(read)]
@@ -244,7 +269,7 @@ impl WebGum for Contract {
     #[storage(read)]
     fn get_bought_project(buyer: Identity, index: u64) -> Project{
         let project_id = storage.buyers.get(buyer).get(index);
-        storage.project_listings.get(project_id).unwrap()
+        storage.project_listings.get(project_id)
     }
 
     #[storage(read)]
