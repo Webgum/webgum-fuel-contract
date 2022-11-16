@@ -6,8 +6,9 @@ use std::{
     identity::Identity,
     constants::BASE_ASSET_ID,
     option::Option,
-    chain::auth::{AuthError, msg_sender},
-    context::{call_frames::msg_asset_id, msg_amount, this_balance},
+    auth::{AuthError, msg_sender},
+    call_frames::msg_asset_id,
+    context::{ msg_amount, this_balance},
     token::transfer,
 };
 
@@ -90,7 +91,7 @@ abi WebGum {
     fn update_project(project_id: u64, price: u64, max_buyers: u64, metadata: str[5]) -> Project;
 
     #[storage(read, write)]
-    fn buy_project(project_id: u64) -> Identity;
+    fn buy_project(project_id: u64);
 
     #[storage(read, write)]
     fn review_project(project_id: u64, rating: u64) -> u64;
@@ -131,6 +132,8 @@ abi WebGum {
     #[storage(read)]
     fn get_project_ratings_ix(project_id: u64) -> Vector;
 
+    #[storage(read)]
+    fn get_project_index() -> u64;
 }
 
 impl WebGum for Contract {
@@ -182,7 +185,7 @@ impl WebGum for Contract {
     }
 
     #[storage(read, write)]
-    fn buy_project(project_id: u64) -> Identity {
+    fn buy_project(project_id: u64) {
         let asset_id = msg_asset_id();
         let amount = msg_amount();
 
@@ -210,14 +213,10 @@ impl WebGum for Contract {
         existing.push(project_id);
         storage.buyers.insert(sender.unwrap(), existing);
 
-        // TO DO: add commission, rewards
+        // TODO: add commission, rewards
          //send the payout
          // this isn't working 
-        // transfer(amount, asset_id, project.owner_address);
-
-        let id: Identity = sender.unwrap();
-
-        return id;
+        transfer(amount, asset_id, project.owner_address);
     }
 
     #[storage(read, write)]
@@ -325,5 +324,10 @@ impl WebGum for Contract {
     fn get_project_ratings_ix(project_id: u64) -> Vector {
         let val: Vector = storage.ratings_map.get(project_id);
         val
+    }
+
+    #[storage(read)]
+    fn get_project_index() -> u64{
+        storage.project_count
     }
 }
