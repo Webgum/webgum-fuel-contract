@@ -93,58 +93,76 @@ storage {
     creators: StorageMap<Identity, Vector> = StorageMap {},
     // map of project id => Project
     project_listings: StorageMap<u64, Project> = StorageMap {},
+    // total # of projects made
     project_count: u64 = 0,
+    // owner of the contract
     owner: Option<Identity> = Option::None,
 }
 
 abi WebGum {
+    // list a new project for sale
     #[storage(read, write)]
     fn list_project(price: u64, max_buyers: u64, metadata: str[59]) -> Project;
 
+    // update an existing project for sale
     #[storage(read, write)]
     fn update_project(project_id: u64, price: u64, max_buyers: u64, metadata: str[59]) -> Project;
 
+    // buy a listed project
     #[storage(read, write)]
     fn buy_project(project_id: u64);
 
+    // review a project you bought with a number 0-5
     #[storage(read, write)]
     fn review_project(project_id: u64, rating: u64) -> u64;
 
+    // get a Project for a given project ID
     #[storage(read)]
     fn get_project(project_id: u64) -> Project;
 
+    // get the total number of projects listed
     #[storage(read)]
     fn get_projects_list_length() -> u64;
 
+    // get the number of projects created by a given Identity
     #[storage(read)]
     fn get_creator_list_length(creator: Identity) -> u64;
 
+    // get the nth Project created by a given Identity
     #[storage(read)]
     fn get_created_project(creator: Identity, index: u64) -> Project;
 
+    // get the nth project ID created by a given Identity
     #[storage(read)]
     fn get_created_project_id(creator: Identity, index: u64) -> u64;
 
+    // get the number of projects bought by a given Identity
     #[storage(read)]
     fn get_buyer_list_length(buyer: Identity) -> u64;
 
+    // get the nth Project bought by a given Identity
     #[storage(read)]
     fn get_bought_project(buyer: Identity, index: u64) -> Project;
 
+    // check if the given Identity has bought the given project_id
     #[storage(read)]
     fn has_bought_project(project_id: u64, wallet: Identity) -> bool;
 
+    // get all of the project IDs created by a given Identity
     #[storage(read)]
     fn get_creator_vector(id: Identity) -> Vector;
 
+    // get all of the project IDs bought by a given Identity
     #[storage(read)]
     fn get_buyer_vector(id: Identity) -> Vector;
 
+    // get the index locations of the reviews for a given project
     #[storage(read)]
     fn get_project_ratings_ix(project_id: u64) -> Vector;
 
+    // get a the Identity of the rater and the project rating (0-5) from a given index
     #[storage(read)]
-    fn get_project_index() -> u64;
+    fn get_project_rating(index: u64) -> (Identity, u64);
 
     // a function to set the contract owner
     #[storage(read, write)]
@@ -182,7 +200,7 @@ impl WebGum for Contract {
 
         return newProject
     }
-
+    
     #[storage(read, write)]
     fn update_project(
         project_id: u64,
@@ -286,7 +304,7 @@ impl WebGum for Contract {
     }
 
     #[storage(read)]
-    fn get_projects_list_length() -> u64{
+    fn get_projects_list_length() -> u64 {
         storage.project_count
     }
 
@@ -349,8 +367,13 @@ impl WebGum for Contract {
     }
 
     #[storage(read)]
-    fn get_project_index() -> u64{
-        storage.project_count
+    fn get_project_rating(index: u64) -> (Identity, u64) {
+        let rating_result = storage.ratings.get(index);
+        let rating_tuple = match rating_result {
+            Option::Some(rating_result) => rating_result,
+            Option::None => revert(50),
+        };
+        (rating_tuple.1, rating_tuple.2)
     }
 
     #[storage(read, write)]

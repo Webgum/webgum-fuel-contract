@@ -127,7 +127,7 @@ async fn can_list_buy_and_review_projects() {
 
     // println!("Project 2 created: {:?}", project2.value);
 
-    let mut total = instance.methods().get_project_index().call().await.unwrap();
+    let mut total = instance.methods().get_projects_list_length().call().await.unwrap();
 
     // println!("TOTAL PROJECTS {:?}", total.value);
     assert!(total.value == 2);
@@ -160,7 +160,7 @@ async fn can_list_buy_and_review_projects() {
     // println!("Project 3 created: {:?}", project3.value);
 
     // get new total projects
-    total = instance.methods().get_project_index().call().await.unwrap();
+    total = instance.methods().get_projects_list_length().call().await.unwrap();
 
     // println!("TOTAL PROJECTS {:?}", total.value);
     assert!(total.value == 3);
@@ -328,6 +328,18 @@ async fn can_list_buy_and_review_projects() {
     assert!(ratings.value.inner[1] == 2);
     assert!(ratings.value.current_ix == 2);
 
+    // get the first rating
+    let rating = instance
+    .methods()
+    .get_project_rating(0)
+    .call()
+    .await
+    .unwrap();
+
+    // println!("first rating: {:?}", rating.value);
+    assert!(rating.value.1 == 4);
+    assert!(rating.value.0 == wallet_2_id);
+
     // get project2
     let project2_copy = instance.methods().get_project(1).call().await.unwrap();
     // println!("PROJECT 2 COPY: {:?}", project2_copy.value);
@@ -475,7 +487,7 @@ async fn can_set_owner_and_withdraw_funds() {
 
     // println!("Project 2 created: {:?}", project2.value);
 
-    let mut total = instance.methods().get_project_index().call().await.unwrap();
+    let mut total = instance.methods().get_projects_list_length().call().await.unwrap();
 
     // println!("TOTAL PROJECTS {:?}", total.value);
     assert!(total.value == 2);
@@ -508,7 +520,7 @@ async fn can_set_owner_and_withdraw_funds() {
     // println!("Project 3 created: {:?}", project3.value);
 
     // get new total projects
-    total = instance.methods().get_project_index().call().await.unwrap();
+    total = instance.methods().get_projects_list_length().call().await.unwrap();
 
     // println!("TOTAL PROJECTS {:?}", total.value);
     assert!(total.value == 3);
@@ -667,5 +679,4 @@ async fn can_set_owner_and_withdraw_funds() {
     assert!(balance_2 == 999985000);
     assert!(balance_3 == 999983350);
     assert!(balance_4 == 1000003150);
-
 }
